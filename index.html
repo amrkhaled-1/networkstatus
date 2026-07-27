@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Everscopes — Network Status</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:         #060D1A;
+    --bg2:        #0B1628;
+    --bg3:        #101E35;
+    --border:     rgba(255,255,255,0.07);
+    --border2:    rgba(255,255,255,0.13);
+    --text:       #E8EDF5;
+    --muted:      #5A6A84;
+    --accent:     #1E6FA8;
+    --accent2:    #2A8FD4;
+    --online:     #1A9E5C;
+    --online-bg:  rgba(26,158,92,0.12);
+    --offline:    #D84040;
+    --offline-bg: rgba(216,64,64,0.12);
+    --warn:       #D4880A;
+    --warn-bg:    rgba(212,136,10,0.12);
+    --gold:       #F0C040;
+  }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── LOGIN SCREEN ─────────────────────────────── */
+  #login-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .login-box {
+    width: 360px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 40px 36px;
+    text-align: center;
+  }
+
+  .login-logo {
+    width: 52px; height: 52px;
+    background: var(--accent);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 22px;
+  }
+
+  .login-box h1 {
+    font-size: 20px; font-weight: 800;
+    color: var(--text); margin-bottom: 4px;
+    letter-spacing: -0.3px;
+  }
+
+  .login-box p {
+    font-size: 13px; color: var(--muted);
+    margin-bottom: 28px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .login-box input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 13px 16px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    letter-spacing: 3px;
+    text-align: center;
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color 0.2s;
+  }
+
+  .login-box input:focus { border-color: var(--accent2); }
+
+  .login-box input.error { border-color: var(--offline); animation: shake 0.3s ease; }
+
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    25%{transform:translateX(-6px)}
+    75%{transform:translateX(6px)}
+  }
+
+  .login-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none; border-radius: 10px;
+    padding: 13px;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .login-btn:hover { background: var(--accent2); }
+  .login-btn:active { transform: scale(0.98); }
+
+  .login-error {
+    font-size: 12px; color: var(--offline);
+    margin-top: 10px; display: none;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── MAIN DASHBOARD ───────────────────────────── */
+  #dashboard { display: none; }
+
+  .topbar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+
+  .topbar-left {
+    display: flex; align-items: center; gap: 14px;
+  }
+
+  .topbar-logo {
+    width: 34px; height: 34px;
+    background: var(--accent);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+
+  .topbar-title {
+    font-size: 15px; font-weight: 800;
+    letter-spacing: -0.2px;
+  }
+
+  .topbar-title span {
+    color: var(--muted);
+    font-weight: 400; font-size: 13px;
+    margin-left: 6px;
+  }
+
+  .topbar-right {
+    display: flex; align-items: center; gap: 16px;
+  }
+
+  .refresh-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .refresh-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--online);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100%{opacity:1} 50%{opacity:0.3}
+  }
+
+  .countdown-ring {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    background: rgba(30,111,168,0.12);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(30,111,168,0.25);
+  }
+
+  .logout-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 6px 14px;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .logout-btn:hover { color: var(--text); border-color: var(--border2); background: var(--bg3); }
+
+  /* ── PAGE CONTENT ─────────────────────────────── */
+  .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+  .page-header { margin-bottom: 28px; }
+  .page-header h2 {
+    font-size: 26px; font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .page-header p {
+    font-size: 13px; color: var(--muted);
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── KPI CARDS ────────────────────────────────── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  .kpi-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .kpi-card.total::before  { background: var(--accent); }
+  .kpi-card.online::before { background: var(--online); }
+  .kpi-card.offline::before{ background: var(--offline); }
+  .kpi-card.uptime::before { background: var(--gold); }
+
+  .kpi-label {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .kpi-value {
+    font-size: 36px; font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .kpi-card.total  .kpi-value { color: var(--accent2); }
+  .kpi-card.online .kpi-value { color: var(--online); }
+  .kpi-card.offline .kpi-value{ color: var(--offline); }
+  .kpi-card.uptime .kpi-value { color: var(--gold); }
+
+  .kpi-sub {
+    font-size: 11px; color: var(--muted);
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── SECTION BLOCK ────────────────────────────── */
+  .section-block { margin-bottom: 22px; }
+
+  .section-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    border-radius: 10px 10px 0 0;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .section-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+  }
+
+  .device-table {
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+    border-collapse: collapse;
+  }
+
+  .device-table th {
+    background: var(--bg3);
+    padding: 10px 16px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    font-family: 'JetBrains Mono', monospace;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .device-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .device-table tr:last-child td { border-bottom: none; }
+  .device-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .device-name {
+    font-weight: 700; font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .device-ip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--accent2);
+  }
+
+  .device-model { color: var(--muted); font-size: 12px; }
+  .device-location { color: var(--muted); font-size: 12px; }
+
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  .status-badge.online {
+    background: var(--online-bg);
+    color: #3DD68C;
+    border: 1px solid rgba(26,158,92,0.3);
+  }
+
+  .status-badge.offline {
+    background: var(--offline-bg);
+    color: #FF6B6B;
+    border: 1px solid rgba(216,64,64,0.3);
+    animation: blink 1.5s infinite;
+  }
+
+  .status-badge.pending {
+    background: var(--warn-bg);
+    color: #FFBE45;
+    border: 1px solid rgba(212,136,10,0.3);
+  }
+
+  @keyframes blink {
+    0%,100%{opacity:1} 50%{opacity:0.6}
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+
+  .online  .status-dot { background: #3DD68C; }
+  .offline .status-dot { background: #FF6B6B; }
+  .pending .status-dot { background: #FFBE45; }
+
+  .resp-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  .resp-fast { color: var(--online); }
+  .resp-slow { color: var(--warn); }
+  .resp-none { color: var(--muted); }
+
+  .last-ping {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--muted);
+  }
+
+  /* ── LAST UPDATED FOOTER ──────────────────────── */
+  .footer-bar {
+    text-align: center;
+    padding: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--muted);
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  /* ── OFFLINE BANNER ───────────────────────────── */
+  .offline-banner {
+    background: var(--offline-bg);
+    border: 1px solid rgba(216,64,64,0.3);
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin-bottom: 22px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+  }
+
+  .offline-banner.show { display: flex; }
+
+  .offline-banner-icon {
+    width: 32px; height: 32px; flex-shrink: 0;
+    background: rgba(216,64,64,0.2);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  .offline-banner strong { color: #FF6B6B; font-weight: 700; }
+  .offline-banner span { color: var(--muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+
+  @media (max-width: 768px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .topbar { padding: 0 16px; }
+    .page { padding: 20px 16px; }
+    .device-table th:nth-child(3),
+    .device-table td:nth-child(3),
+    .device-table th:nth-child(5),
+    .device-table td:nth-child(5) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN SCREEN ══════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🖧</div>
+    <h1>Everscopes NOC</h1>
+    <p>network operations center</p>
+    <input type="password" id="pwd-input" placeholder="Enter password" autocomplete="off" />
+    <button class="login-btn" onclick="doLogin()">Access Dashboard</button>
+    <p class="login-error" id="login-error">Incorrect password. Try again.</p>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ═════════════════════════════════════════════ -->
+<div id="dashboard">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">🖧</div>
+      <div>
+        <div class="topbar-title">Everscopes NOC <span>Network Operations Center</span></div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="refresh-badge">
+        <div class="refresh-dot"></div>
+        <span>LIVE</span>
+      </div>
+      <div class="countdown-ring" id="countdown-badge">Next refresh in 60s</div>
+      <button class="logout-btn" onclick="doLogout()">Log out</button>
+    </div>
+  </div>
+
+  <div class="page">
+
+    <div class="page-header">
+      <h2>Network Status</h2>
+      <p id="last-updated">Loading data...</p>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-grid">
+      <div class="kpi-card total">
+        <div class="kpi-label">Total Devices</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+        <div class="kpi-sub">monitored endpoints</div>
+      </div>
+      <div class="kpi-card online">
+        <div class="kpi-label">Online</div>
+        <div class="kpi-value" id="kpi-online">—</div>
+        <div class="kpi-sub">responding</div>
+      </div>
+      <div class="kpi-card offline">
+        <div class="kpi-label">Offline</div>
+        <div class="kpi-value" id="kpi-offline">—</div>
+        <div class="kpi-sub">timed out</div>
+      </div>
+      <div class="kpi-card uptime">
+        <div class="kpi-label">Uptime</div>
+        <div class="kpi-value" id="kpi-uptime">—</div>
+        <div class="kpi-sub">availability</div>
+      </div>
+    </div>
+
+    <!-- Offline banner -->
+    <div class="offline-banner" id="offline-banner">
+      <div class="offline-banner-icon">⚠</div>
+      <div>
+        <strong id="offline-banner-text">1 device offline</strong><br>
+        <span id="offline-banner-list"></span>
+      </div>
+    </div>
+
+    <!-- Device tables rendered here -->
+    <div id="device-sections"></div>
+
+    <div class="footer-bar" id="footer-ts">Everscopes Network Monitor — Auto-refreshes every 60 seconds</div>
+  </div>
+
+</div>
+
+<script>
+// ══ CONFIG ═══════════════════════════════════════════════════
+// CHANGE THESE:
+const PASSWORD        = "Admin@ES@60";       // <-- set your password here
+const SHEET_URL       = "https://docs.google.com/spreadsheets/d/1TE6wqzjDeWTEASishW_G6VL8z2qxw1ak3yb_sqTM4Mg/gviz/tq?tqx=out:json&sheet=Ping%20Tracker";
+const REFRESH_SECONDS = 3600;
+
+// ══ DEVICE MAP ════════════════════════════════════════════════
+// Maps row number → device info matching your sheet layout
+// Row numbers match your existing sheet (rows 7-34)
+const DEVICE_MAP = {
+  7:  { name:"DSL-Router-01",     model:"DSL Router",       ip:"192.168.1.1",   location:"Internet / WAN", section:"Internet / WAN" },
+  8:  { name:"4G-Router-01",      model:"4G Router",        ip:"192.168.2.1",   location:"Internet / WAN", section:"Internet / WAN" },
+  9:  { name:"4G-Router-02",      model:"4G Router",        ip:"192.168.3.1",   location:"Internet / WAN", section:"Internet / WAN" },
+  10: { name:"DSL-Router-02",     model:"DSL Router",       ip:"192.168.110.1", location:"Internet / WAN", section:"Internet / WAN" },
+  11: { name:"4G-Router-03",      model:"4G Router",        ip:"192.168.4.1",   location:"Internet / WAN", section:"Internet / WAN" },
+  13: { name:"Sophos-Firewall-01",model:"Sophos XGS 2100",  ip:"10.250.10.1",   location:"Core / DMZ",     section:"Firewall" },
+  15: { name:"Core-Switch-01",    model:"Huawei S620",      ip:"10.250.10.2",   location:"Core / MDF",     section:"Core" },
+  17: { name:"GF-Switch-Main",    model:"Huawei S310",      ip:"10.250.10.200", location:"Ground Floor",   section:"Ground Floor" },
+  18: { name:"GF-Switch-DC",      model:"Huawei S310 DC",   ip:"10.250.10.10",  location:"Ground Floor",   section:"Ground Floor" },
+  20: { name:"SF-Switch-01",      model:"Huawei S310",      ip:"10.250.10.20",  location:"Second Floor",   section:"Second Floor" },
+  21: { name:"SF-Switch-02",      model:"Huawei S310",      ip:"10.250.10.30",  location:"Second Floor",   section:"Second Floor" },
+  22: { name:"SF-Switch-03",      model:"Huawei S310",      ip:"10.250.10.40",  location:"Second Floor",   section:"Second Floor" },
+  24: { name:"FF-Switch-01",      model:"Huawei S310",      ip:"10.250.10.50",  location:"First Floor",    section:"First Floor" },
+  26: { name:"Dell-Server-DC",    model:"Dell Server",      ip:"10.250.5.5",    location:"Server Room",    section:"Server / WLAN" },
+  27: { name:"WLAN-Controller-01",model:"Huawei AC650-128AP",ip:"10.250.20.2",  location:"Server Room",    section:"Server / WLAN" },
+  30: { name:"edge1-NVR",         model:"NVR",              ip:"10.10.101.2",   location:"Server Room",    section:"NVR" },
+  31: { name:"edge2-NVR",         model:"NVR",              ip:"10.10.102.2",   location:"Server Room",    section:"NVR" },
+  32: { name:"edge3-NVR",         model:"NVR",              ip:"10.10.103.2",   location:"Server Room",    section:"NVR" },
+  33: { name:"edge4-NVR",         model:"NVR",              ip:"10.10.104.2",   location:"Server Room",    section:"NVR" },
+  34: { name:"edge5-NVR",         model:"NVR",              ip:"10.10.105.2",   location:"Server Room",    section:"NVR" },
+};
+
+const SECTION_COLORS = {
+  "Internet / WAN": "#1565C0",
+  "Firewall":        "#B71C1C",
+  "Core":            "#1B5E20",
+  "Ground Floor":    "#4A148C",
+  "Second Floor":    "#E65100",
+  "First Floor":     "#00695C",
+  "Server / WLAN":   "#37474F",
+  "NVR":             "#4E342E",
+};
+
+// ══ AUTH ═════════════════════════════════════════════════════
+function doLogin() {
+  const val = document.getElementById('pwd-input').value;
+  if (val === PASSWORD) {
+    sessionStorage.setItem('noc_auth', '1');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    startDashboard();
+  } else {
+    const inp = document.getElementById('pwd-input');
+    inp.classList.add('error');
+    document.getElementById('login-error').style.display = 'block';
+    setTimeout(() => inp.classList.remove('error'), 400);
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('noc_auth');
+  location.reload();
+}
+
+document.getElementById('pwd-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+if (sessionStorage.getItem('noc_auth') === '1') {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  startDashboard();
+}
+
+// ══ COUNTDOWN TIMER ══════════════════════════════════════════
+let countdownVal = REFRESH_SECONDS;
+let countdownInterval;
+
+function startCountdown() {
+  clearInterval(countdownInterval);
+  countdownVal = REFRESH_SECONDS;
+  countdownInterval = setInterval(() => {
+    countdownVal--;
+    document.getElementById('countdown-badge').textContent =
+      'Next refresh in ' + countdownVal + 's';
+    if (countdownVal <= 0) {
+      countdownVal = REFRESH_SECONDS;
+      fetchData();
+    }
+  }, 1000);
+}
+
+// ══ DATA FETCH FROM GOOGLE SHEET ═════════════════════════════
+// Reads status column (H=col8), response time (I=col9), timestamp (J=col10)
+// COL INDEX in gviz: A=0, B=1 ... H=7, I=8, J=9
+
+function fetchData() {
+  document.getElementById('last-updated').textContent = 'Refreshing...';
+
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxvJKds7NWktaZ2F0tW8c9j-wl1p-Kn0eMW5kbs-apDgAfw38Ye98w1SZTVSVdWgbjQ/exec';
+
+  fetch(WEB_APP_URL)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      renderFromWebApp(data.devices);
+    })
+    .catch(err => {
+      document.getElementById('last-updated').textContent =
+        'Error loading data: ' + err.message;
+    });
+}
+
+function renderFromWebApp(devices) {
+  const mapped = devices.map(d => {
+    const sv = String(d.status || '');
+    let status = 'pending';
+    if (sv.includes('Replying'))  status = 'online';
+    if (sv.includes('Timed Out')) status = 'offline';
+
+    return {
+      name:     d.name     || '',
+      model:    d.model    || '',
+      ip:       d.ip       || '',
+      location: d.location || '',
+      section:  d.section  || '',
+      status:   status,
+      respTime: String(d.respTime || '—').replace(' ms','').trim(),
+      lastPing: d.lastPing || '—',
+    };
+  });
+
+  renderDashboard(mapped);
+}
+
+
+// ══ RENDER ═══════════════════════════════════════════════════
+function renderDashboard(devices) {
+  const online  = devices.filter(d => d.status === 'online').length;
+  const offline = devices.filter(d => d.status === 'offline').length;
+  const total   = devices.length;
+  const uptime  = total > 0 ? Math.round(online / total * 100) : 0;
+
+  document.getElementById('kpi-total').textContent  = total;
+  document.getElementById('kpi-online').textContent  = online;
+  document.getElementById('kpi-offline').textContent = offline;
+  document.getElementById('kpi-uptime').textContent  = uptime + '%';
+
+  // Offline banner
+  const offlineDevices = devices.filter(d => d.status === 'offline');
+  const banner = document.getElementById('offline-banner');
+  if (offlineDevices.length > 0) {
+    banner.classList.add('show');
+    document.getElementById('offline-banner-text').textContent =
+      offlineDevices.length + ' device' + (offlineDevices.length > 1 ? 's' : '') + ' offline';
+    document.getElementById('offline-banner-list').textContent =
+      offlineDevices.map(d => d.name + ' (' + d.ip + ')').join(' · ');
+  } else {
+    banner.classList.remove('show');
+  }
+
+  // Group by section
+  const sections = {};
+  devices.forEach(d => {
+    if (!sections[d.section]) sections[d.section] = [];
+    sections[d.section].push(d);
+  });
+
+  let html = '';
+  Object.entries(sections).forEach(([sec, devs]) => {
+    const color = SECTION_COLORS[sec] || '#37474F';
+    const secOnline  = devs.filter(d => d.status === 'online').length;
+    const secOffline = devs.filter(d => d.status === 'offline').length;
+
+    html += `
+      <div class="section-block">
+        <div class="section-header" style="background:${color}22; border:1px solid ${color}44; border-bottom:none;">
+          <div class="section-dot" style="background:${color};"></div>
+          ${sec}
+          <span style="margin-left:auto; font-size:11px; color:rgba(255,255,255,0.5);">
+            ${secOnline} online${secOffline > 0 ? ' · <span style="color:#FF6B6B;">' + secOffline + ' offline</span>' : ''}
+          </span>
+        </div>
+        <table class="device-table">
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>IP Address</th>
+              <th>Model</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th>Response</th>
+              <th>Last Ping</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    devs.forEach(d => {
+      const statusClass = d.status;
+      const statusLabel = d.status === 'online' ? '● Replying' :
+                          d.status === 'offline' ? '● Timed Out' : '● Pending';
+
+      let respClass = 'resp-none', respDisplay = '—';
+      if (d.respTime && d.respTime !== '—') {
+        const ms = parseInt(d.respTime);
+        respDisplay = ms + ' ms';
+        respClass = ms <= 10 ? 'resp-fast' : 'resp-slow';
+      }
+
+      html += `
+        <tr>
+          <td><div class="device-name">${d.name}</div></td>
+          <td><div class="device-ip">${d.ip}</div></td>
+          <td><div class="device-model">${d.model}</div></td>
+          <td><div class="device-location">${d.location}</div></td>
+          <td>
+            <span class="status-badge ${statusClass}">
+              <span class="status-dot"></span>
+              ${statusLabel}
+            </span>
+          </td>
+          <td><span class="resp-time ${respClass}">${respDisplay}</span></td>
+          <td><div class="last-ping">${d.lastPing}</div></td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table></div>';
+  });
+
+  document.getElementById('device-sections').innerHTML = html;
+
+  const now = new Date().toLocaleString('en-GB', {
+    day:'2-digit', month:'short', year:'numeric',
+    hour:'2-digit', minute:'2-digit', second:'2-digit'
+  });
+  document.getElementById('last-updated').textContent = 'Last updated: ' + now;
+  document.getElementById('footer-ts').textContent =
+    'Everscopes NOC — Last refreshed ' + now + ' · Auto-refreshes every ' + REFRESH_SECONDS + 's';
+}
+
+// ══ START ════════════════════════════════════════════════════
+function startDashboard() {
+  fetchData();
+  startCountdown();
+}
+</script>
+</body>
+</html>
